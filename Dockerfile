@@ -7,6 +7,8 @@ WORKDIR /app
 # Install System Dependencies required for OpenCV, Tesseract-OCR, and PDF processing
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-osd \
     libgl1 \
     libglib2.0-0 \
     poppler-utils \
