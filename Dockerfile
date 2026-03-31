@@ -18,11 +18,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download HuggingFace model during build stage to save startup bandwidth
-RUN python -c "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
-    MODEL_NAME = 'vennify/t5-base-grammar-correction'; \
-    AutoTokenizer.from_pretrained(MODEL_NAME); \
-    AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)"
+# AI feature is optional and transformers are not installed by default
+# Skipping HuggingFace model download during build stage
 
 # Copy the core app files into the container
 COPY . .
