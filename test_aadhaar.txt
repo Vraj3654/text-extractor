@@ -1,0 +1,13 @@
+GOVERNMENT OF INDIA
+AADHAAR
+Name: Ramesh Kumar
+DOB: 15/08/1990
+Gender: Male
+
+Address:
+Flat 402, Sunshine Apartments,
+MG Road, Bangalore,
+Karnataka 560001
+
+1234 5678 9012
+VID: 1234 5678 9012 3456

@@ -1,0 +1,23 @@
+# Image Processing
+opencv-python-headless
+numpy<2.0
+Pillow
+
+# OCR
+pytesseract
+
+# Web App
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+
+# AI Correction (optional - app works without these if torch has issues)
+# transformers
+# torch
+
+# New Core Enhancements
+pdf2image
+langdetect
+python-docx
+fpdf2

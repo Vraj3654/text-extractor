@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Text Extractor Pro</title>
+  <meta name="description" content="AI-powered OCR with document classification, key info extraction, translation and real-time camera OCR."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="container">
+
+<!-- LOGIN OVERLAY -->
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-box card" style="max-width: 400px; margin: 10vh auto; padding: 2rem;">
+    <h2>Welcome to <span class="gradient-text">Pro</span></h2>
+    <p class="muted">Sign in to access tools & workflows.</p>
+    
+    <div class="form-group" style="margin-top: 1rem;">
+      <label class="form-label">Username</label>
+      <input type="text" id="auth-username" class="form-input" placeholder="Enter username" />
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label class="form-label">Password</label>
+      <input type="password" id="auth-password" class="form-input" placeholder="Enter password" />
+    </div>
+    
+    <div class="auth-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+      <button class="btn btn-primary" style="flex:1" onclick="handleLogin()">Login</button>
+      <button class="btn" style="flex:1" onclick="handleRegister()">Register</button>
+    </div>
+    <div id="auth-error" class="error-msg" style="color: #ff4d4d; margin-top: 1rem; font-size: 0.85rem; display:none;"></div>
+  </div>
+</div>
+
+<div id="main-app" style="display:none;">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <div>
+        <h1>AI Text Extractor <span class="gradient-text">Pro</span></h1>
+        <p class="subtitle">OCR · Classification · Translation · Camera</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge" id="usage-badge" style="display:none; background:rgba(124,110,245,0.2); border:1px solid var(--primary);">Credits: 0/100</span>
+      <span class="badge" id="tesseract-badge">⬤ Tesseract</span>
+      <span class="badge" id="ai-badge">⬤ AI Engine</span>
+      <button class="btn btn-sm" id="logout-btn" style="display:none; margin-left:10px" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="upload" id="tab-upload">📤 Upload & OCR</button>
+    <button class="tab" data-tab="workflow" id="tab-workflow">⚡ Workflows</button>
+    <button class="tab" data-tab="camera" id="tab-camera">📷 Live Camera</button>
+    <button class="tab" data-tab="history" id="tab-history">📋 History</button>
+  </nav>
+
+  <!-- ===== TAB: UPLOAD ===== -->
+  <section class="tab-content active" id="tab-content-upload">
+
+    <!-- Language Selector -->
+    <div class="toolbar">
+      <div class="field-group">
+        <label for="language-select">🌐 OCR Language</label>
+        <select id="language-select">
+          <option value="eng">English</option>
+          <option value="hin">Hindi</option>
+          <option value="fra">French</option>
+          <option value="deu">German</option>
+          <option value="spa">Spanish</option>
+          <option value="chi_sim">Chinese (Simplified)</option>
+          <option value="ara">Arabic</option>
+          <option value="jpn">Japanese</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-inner">
+        <div class="upload-icon">☁</div>
+        <p class="drop-title">Drag &amp; Drop your file here</p>
+        <p class="drop-sub">Supports JPG, PNG, and PDF up to 10MB</p>
+        <label for="file-input" class="btn btn-primary">Browse Files</label>
+        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf" hidden/>
+      </div>
+      <div class="drop-overlay" id="drop-overlay">Drop to extract text</div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-bar" id="progress-bar" style="display:none">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <!-- Results Panel (hidden until upload) -->
+    <div id="results-panel" style="display:none">
+
+      <!-- Classification Card -->
+      <div class="card card-classify" id="classify-card">
+        <div class="card-header">
+          <h3>📂 Document Classification</h3>
+          <span class="loading-dots" id="classify-loading">Analyzing...</span>
+        </div>
+        <div id="classify-result" class="classify-result"></div>
+      </div>
+
+      <!-- Key Info Card -->
+      <div class="card card-info" id="info-card">
+        <div class="card-header">
+          <h3>🔍 Key Information Extracted</h3>
+        </div>
+        <div id="key-info-result" class="key-info-grid"></div>
+      </div>
+
+      <!-- Auto-Fill Form Card -->
+      <div class="card card-autofill" id="autofill-card">
+        <div class="card-header">
+          <h3>📋 Smart Auto-Fill Form</h3>
+          <button class="btn btn-sm btn-accent" onclick="copyFormData()">📋 Copy JSON</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="fill-name" placeholder="-- Extracted Name --" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input type="text" class="form-input" id="fill-dob" placeholder="-- Extracted DOB --" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <input type="text" class="form-input" id="fill-gender" placeholder="-- Extracted Gender --" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" class="form-input" id="fill-phone" placeholder="-- Extracted Phone --" />
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="fill-email" placeholder="-- Extracted Email --" />
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label">Full Address</label>
+            <textarea class="form-input" id="fill-address" rows="3" placeholder="-- Extracted Address --"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- OCR Output -->
+      <div class="card-row">
+        <div class="card">
+          <div class="card-header">
+            <h3>📄 Raw OCR Output</h3>
+            <div class="confidence-badge" id="confidence-badge">–</div>
+          </div>
+          <pre id="raw-text" class="text-output"></pre>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>✨ Corrected Output</h3>
+            <button class="btn btn-sm" onclick="copyText()">📋 Copy</button>
+          </div>
+          <pre id="corrected-text" class="text-output"></pre>
+        </div>
+      </div>
+
+      <!-- Translation Card -->
+      <div class="card card-translate">
+        <div class="card-header">
+          <h3>🌍 Translate Text</h3>
+        </div>
+        <div class="translate-controls">
+          <select id="translate-lang">
+            <option value="">— Select target language —</option>
+            <option value="hi">Hindi</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+            <option value="ar">Arabic</option>
+            <option value="zh-CN">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="it">Italian</option>
+            <option value="ta">Tamil</option>
+            <option value="te">Telugu</option>
+            <option value="mr">Marathi</option>
+            <option value="bn">Bengali</option>
+            <option value="gu">Gujarati</option>
+            <option value="ur">Urdu</option>
+          </select>
+          <button class="btn btn-accent" id="translate-btn" onclick="translateDoc()">Translate ↗</button>
+        </div>
+        <div id="translate-loading" class="loading-dots" style="display:none">Translating...</div>
+        <pre id="translated-text" class="text-output" style="display:none"></pre>
+        <div class="translate-actions" id="translate-actions" style="display:none">
+          <button class="btn btn-sm" onclick="copyTranslation()">📋 Copy Translation</button>
+        </div>
+      </div>
+
+      <!-- Export Card -->
+      <div class="card card-export">
+        <div class="card-header"><h3>📥 Export Results</h3></div>
+        <div class="export-buttons" id="export-buttons"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== TAB: WORKFLOWS ===== -->
+  <section class="tab-content" id="tab-content-workflow">
+    <div class="card">
+      <div class="card-header">
+        <h3>⚡ Custom Zapier-Style Workflows</h3>
+        <button class="btn btn-primary btn-sm" onclick="executeWorkflow()">▶ Run Workflow</button>
+      </div>
+      <p class="muted" style="margin-bottom: 1rem;">Chain operations automatically on uploaded documents. Executing costs 1 Credit.</p>
+
+      <div class="workflow-builder">
+        <div class="wf-step">
+          <div class="wf-step-num">1</div>
+          <div class="wf-step-content">
+            <h4 style="margin-bottom: 0.5rem;">Trigger: File Upload</h4>
+            <input type="file" id="wf-file-input" accept=".jpg,.png,.pdf" class="form-input"/>
+          </div>
+        </div>
+        
+        <div class="wf-step" style="margin-top: 1rem;">
+          <div class="wf-step-num">2</div>
+          <div class="wf-step-content">
+             <h4 style="margin-bottom: 0.5rem;">Action 1: Processing</h4>
+             <select id="wf-action-1" class="form-input">
+                <option value="extract">Basic OCR Extraction (Default)</option>
+                <option value="extract_info">Smart Form Auto-Fill</option>
+                <option value="classify">Document Classification</option>
+             </select>
+          </div>
+        </div>
+
+        <div class="wf-step" style="margin-top: 1rem;">
+          <div class="wf-step-num">3</div>
+          <div class="wf-step-content">
+             <h4 style="margin-bottom: 0.5rem;">Action 2: Translation</h4>
+             <select id="wf-action-2" class="form-input">
+                <option value="none">No Translation</option>
+                <option value="translate:hi">Translate to Hindi</option>
+                <option value="translate:fr">Translate to French</option>
+                <option value="translate:es">Translate to Spanish</option>
+             </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="wf-loading" class="loading-dots" style="display:none; margin-top:1rem;">Executing Workflow Pipeline...</div>
+      
+      <div class="wf-result card-row" id="wf-result" style="display:none; margin-top: 1.5rem;">
+         <div class="card" style="width: 100%">
+           <div class="card-header">
+             <h4>Workflow Output Payload</h4>
+             <button class="btn btn-sm" onclick="copyWfData()">📋 Copy JSON</button>
+           </div>
+           <pre id="wf-output-text" class="text-output" style="max-height: 250px; background: rgba(0,0,0,0.5);"></pre>
+         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: CAMERA ===== -->
+  <section class="tab-content" id="tab-content-camera">
+    <div class="camera-container">
+
+      <div class="camera-preview-wrap">
+        <video id="camera-feed" autoplay playsinline></video>
+        <canvas id="camera-canvas" hidden></canvas>
+        <div class="camera-overlay" id="camera-overlay">
+          <span>Click "Start Camera" to begin live OCR</span>
+        </div>
+        <div class="scan-line" id="scan-line" style="display:none"></div>
+      </div>
+
+      <div class="camera-controls">
+        <button class="btn btn-primary" id="camera-btn" onclick="toggleCamera()">📷 Start Camera</button>
+        <button class="btn btn-accent" id="snapshot-btn" onclick="takeSnapshot()" style="display:none">📸 Snapshot OCR</button>
+        <div class="camera-status" id="camera-status">Camera not started</div>
+      </div>
+
+      <div class="card" id="camera-result-card" style="display:none">
+        <div class="card-header">
+          <h3>📄 Extracted Text (Camera)</h3>
+          <div class="confidence-badge" id="camera-confidence">–</div>
+        </div>
+        <pre id="camera-text" class="text-output"></pre>
+        <div style="margin-top:1rem">
+          <button class="btn btn-sm" onclick="copyCameraText()">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="camera-live-box">
+        <div class="card-header"><h3>⚡ Live OCR Feed <span class="live-dot"></span></h3></div>
+        <p class="live-desc" id="live-desc">Live OCR will appear here when camera is active</p>
+        <pre id="live-text" class="text-output live-text"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: HISTORY ===== -->
+  <section class="tab-content" id="tab-content-history">
+    <div class="card">
+      <div class="card-header">
+        <h3>📋 Processing History</h3>
+        <button class="btn btn-sm" onclick="loadHistory()">🔄 Refresh</button>
+      </div>
+      <div id="history-list" class="history-list"><p class="muted">Loading...</p></div>
+    </div>
+  </section>
+
+</div> <!-- End Main App Container -->
+
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>

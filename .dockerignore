@@ -1,0 +1,7 @@
+.venv
+__pycache__
+*.db
+output/
+uploads/
+*~
+.DS_Store
