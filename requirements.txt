@@ -11,7 +11,7 @@ fastapi
 uvicorn
 python-multipart
 sqlalchemy
-passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
 
 # AI Correction (optional - app works without these if torch has issues)

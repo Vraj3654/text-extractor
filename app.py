@@ -20,7 +20,7 @@ import base64
 from docx import Document as DocxDocument
 from fpdf import FPDF
 
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
@@ -63,14 +63,13 @@ SECRET_KEY = "SUPER_SECRET_SAAS_KEY"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 1 week
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def create_access_token(data: dict):
     to_encode = data.copy()
