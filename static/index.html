@@ -237,6 +237,10 @@
       <div class="camera-controls">
         <button class="btn btn-primary" id="camera-btn" onclick="toggleCamera()">📷 Start Camera</button>
         <button class="btn btn-accent" id="snapshot-btn" onclick="takeSnapshot()" style="display:none">📸 Snapshot OCR</button>
+        <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-muted); margin-left:0.5rem;">
+          <input type="checkbox" id="handwriting-toggle" style="width:16px;height:16px;cursor:pointer;" />
+          ✍️ Handwriting Mode
+        </label>
         <div class="camera-status" id="camera-status">Camera not started</div>
       </div>
 

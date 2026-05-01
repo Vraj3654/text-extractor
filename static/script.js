@@ -380,15 +380,16 @@ async function takeSnapshot() {
   const card = document.getElementById('camera-result-card');
   const textEl = document.getElementById('camera-text');
   const confEl = document.getElementById('camera-confidence');
+  const isHandwriting = document.getElementById('handwriting-toggle').checked;
 
   card.style.display = 'block';
-  textEl.textContent = 'Processing snapshot...';
+  textEl.textContent = isHandwriting ? 'Processing handwriting...' : 'Processing snapshot...';
 
   try {
     const res = await authFetch('/api/camera-ocr', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUrl })
+      body: JSON.stringify({ image: dataUrl, handwriting: isHandwriting })
     });
     if (!res.ok) throw new Error('OCR failed');
     const data = await res.json();

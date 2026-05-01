@@ -307,6 +307,8 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
 
     try:
         data_url = payload.get("image", "")
+        handwriting_mode = payload.get("handwriting", False)
+
         if not data_url:
             raise HTTPException(status_code=400, detail="No image data provided")
 
@@ -314,20 +316,28 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
             data_url = data_url.split(",", 1)[1]
 
         img_bytes = base64.b64decode(data_url)
-        
-        # Use camera-specific preprocessing (gentler — no aggressive thresholding)
-        processed = preprocess.preprocess_camera_image(img_bytes)
-        
-        # PSM 3 = fully automatic page segmentation (best for camera photos with mixed content)
+
         import pytesseract
-        custom_config = r'--oem 3 --psm 3'
-        raw_text = pytesseract.image_to_string(processed, config=custom_config).strip()
-        
-        # Get confidence score
-        data = pytesseract.image_to_data(processed, config=custom_config, output_type=pytesseract.Output.DICT)
+
+        if handwriting_mode:
+            # Handwriting pipeline: Otsu + dilation + PSM 11 (sparse text)
+            processed = preprocess.preprocess_handwriting_image(img_bytes)
+            # Try PSM 11 (sparse text) — best for handwriting
+            psm11_text = pytesseract.image_to_string(processed, config='--oem 3 --psm 11').strip()
+            # Try PSM 6 (single uniform block) as fallback
+            psm6_text  = pytesseract.image_to_string(processed, config='--oem 3 --psm 6').strip()
+            # Use whichever gives more output
+            raw_text = psm11_text if len(psm11_text) >= len(psm6_text) else psm6_text
+        else:
+            # Printed text pipeline: gentle sharpen + PSM 3
+            processed = preprocess.preprocess_camera_image(img_bytes)
+            raw_text = pytesseract.image_to_string(processed, config='--oem 3 --psm 3').strip()
+
+        # Confidence score
+        data = pytesseract.image_to_data(processed, config='--oem 3 --psm 3', output_type=pytesseract.Output.DICT)
         confidences = [int(c) for c in data['conf'] if str(c).lstrip('-').isdigit() and int(c) > 0]
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-        
+
         return {
             "text": raw_text,
             "raw_text": raw_text,

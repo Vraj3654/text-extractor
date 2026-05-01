@@ -97,7 +97,45 @@ def preprocess_camera_image(image_bytes):
 
     return result
 
-if __name__ == "__main__":
+def preprocess_handwriting_image(image_bytes):
+    """Preprocessing pipeline optimized for handwritten text.
+
+    Key differences from printed text:
+    - Otsu thresholding works better than adaptive for uneven ink pressure
+    - Dilation thickens thin pen strokes so Tesseract can trace them
+    - Higher contrast to separate ink from paper
+    """
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if img is None:
+        raise ValueError("Could not decode handwriting image bytes.")
+
+    # Scale down very large images
+    h, w = img.shape[:2]
+    if w > 2000:
+        scale = 2000 / w
+        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+    # Grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Aggressively boost contrast
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+
+    # Gentle blur to remove noise before thresholding
+    blurred = cv2.GaussianBlur(enhanced, (3, 3), 0)
+
+    # Otsu's binarization — automatically finds best threshold for ink vs paper
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # Dilate to thicken thin pen strokes (makes letters more readable for Tesseract)
+    kernel = np.ones((2, 2), np.uint8)
+    dilated = cv2.dilate(thresh, kernel, iterations=1)
+
+    return dilated
+
     # Test run
     try:
         preprocess_image("images/input.jpg", "output/processed.png", show_preview=True)
