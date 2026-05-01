@@ -330,7 +330,6 @@ async function toggleCamera() {
   const btn = document.getElementById('camera-btn');
   const snapBtn = document.getElementById('snapshot-btn');
   const overlay = document.getElementById('camera-overlay');
-  const scanLine = document.getElementById('scan-line');
   const status = document.getElementById('camera-status');
 
   if (cameraStream) {
@@ -338,28 +337,27 @@ async function toggleCamera() {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
     document.getElementById('camera-feed').srcObject = null;
-    if (liveOcrInterval) { clearInterval(liveOcrInterval); liveOcrInterval = null; }
     btn.textContent = '📷 Start Camera';
     snapBtn.style.display = 'none';
     overlay.style.display = 'flex';
-    scanLine.style.display = 'none';
     status.textContent = 'Camera stopped';
-    document.getElementById('live-desc').textContent = 'Live OCR will appear here when camera is active';
     return;
   }
 
   try {
     status.textContent = 'Requesting camera access...';
-    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+    cameraStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        width: { ideal: 1920 }, 
+        height: { ideal: 1080 },
+        facingMode: { ideal: "environment" }
+      } 
+    });
     document.getElementById('camera-feed').srcObject = cameraStream;
     overlay.style.display = 'none';
-    scanLine.style.display = 'block';
     btn.textContent = '⏹ Stop Camera';
     snapBtn.style.display = 'inline-flex';
     status.textContent = '🟢 Camera active';
-
-    // Start live OCR every 3.5 seconds
-    liveOcrInterval = setInterval(runLiveOCR, 3500);
   } catch (err) {
     status.textContent = '❌ Camera access denied: ' + err.message;
   }
@@ -374,25 +372,7 @@ function captureFrame() {
   return canvas.toDataURL('image/jpeg', 0.85);
 }
 
-async function runLiveOCR() {
-  if (!cameraStream) return;
-  const dataUrl = captureFrame();
-  try {
-    const res = await authFetch('/api/camera-ocr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUrl })
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const liveText = document.getElementById('live-text');
-    const liveDesc = document.getElementById('live-desc');
-    liveText.textContent = data.text || '(no text detected in frame)';
-    liveDesc.textContent = `Live OCR — Confidence: ${(data.confidence || 0).toFixed(1)}%`;
-  } catch (e) {
-    // Silently fail live OCR
-  }
-}
+
 
 async function takeSnapshot() {
   if (!cameraStream) return;

@@ -230,9 +230,8 @@
         <video id="camera-feed" autoplay playsinline></video>
         <canvas id="camera-canvas" hidden></canvas>
         <div class="camera-overlay" id="camera-overlay">
-          <span>Click "Start Camera" to begin live OCR</span>
+          <span>Click "Start Camera" to begin</span>
         </div>
-        <div class="scan-line" id="scan-line" style="display:none"></div>
       </div>
 
       <div class="camera-controls">
@@ -243,19 +242,13 @@
 
       <div class="card" id="camera-result-card" style="display:none">
         <div class="card-header">
-          <h3>📄 Extracted Text (Camera)</h3>
+          <h3>📄 Extracted Text (Snapshot)</h3>
           <div class="confidence-badge" id="camera-confidence">–</div>
         </div>
         <pre id="camera-text" class="text-output"></pre>
         <div style="margin-top:1rem">
           <button class="btn btn-sm" onclick="copyCameraText()">📋 Copy</button>
         </div>
-      </div>
-
-      <div class="camera-live-box">
-        <div class="card-header"><h3>⚡ Live OCR Feed <span class="live-dot"></span></h3></div>
-        <p class="live-desc" id="live-desc">Live OCR will appear here when camera is active</p>
-        <pre id="live-text" class="text-output live-text"></pre>
       </div>
     </div>
   </section>
