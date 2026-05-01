@@ -153,11 +153,11 @@ def extract_key_info(text: str) -> Dict[str, Any]:
     # ── Name ─────────────────────────────────────────────────────────────────
     # Pattern 1: explicit "Name :" or "To :" label (Aadhaar front says "To : <Name>")
     name_from_label = re.search(
-        r'\b(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\s*[:\-]\s*([A-Z][a-zA-Z\s\.]{1,40})',
+        r'\b(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\s*[:\-]\s*([a-zA-Z][a-zA-Z\s\.]{1,40})',
         text, re.IGNORECASE)
     # Pattern 2: "Government of India" block followed by a standalone name line
     name_after_gov = re.search(
-        r'Government of India\s+([A-Z][a-zA-Z\s\.]{2,40})\s*\n', text)
+        r'Government of India\s+([a-zA-Z][a-zA-Z\s\.]{2,40})\s*\n', text, re.IGNORECASE)
     if name_from_label:
         form_fill["name"] = name_from_label.group(1).strip().split('\n')[0]
     elif name_after_gov:
@@ -179,6 +179,18 @@ def extract_key_info(text: str) -> Dict[str, Any]:
     elif dates:
         form_fill["dob"] = dates[0]
 
+    # Pattern 3: Name fallback - Line immediately above DOB if Name wasn't found
+    if not form_fill["name"] and form_fill["dob"]:
+        lines = text.split('\n')
+        for i, line in enumerate(lines):
+            if form_fill["dob"] in line and i > 0:
+                possible_name = lines[i-1].strip()
+                # Clean up if the previous line had "Name:" but OCR garbled the keyword
+                possible_name = re.sub(r'^(?i)(?:Name|Nane|Nam)[:\-\s]*', '', possible_name).strip()
+                if possible_name and len(possible_name) > 2 and not re.search(r'\d', possible_name):
+                    form_fill["name"] = possible_name
+                    break
+
     # ── Gender ────────────────────────────────────────────────────────────────
     gender_match = re.search(r'\b(?:Gender|Sex)\b\s*[:\-]?\s*(Male|Female|Transgender|M|F)\b', text, re.IGNORECASE)
     if gender_match:
@@ -191,18 +203,19 @@ def extract_key_info(text: str) -> Dict[str, Any]:
     # ── Address ───────────────────────────────────────────────────────────────
     # Pattern 1: explicit "Address :" keyword block
     address_match = re.search(
-        r'\b(?:Address|Add)\b\s*[:\-]?\s*([A-Za-z0-9\s\,\.\-\/\n]{10,200}?(?:\b\d{6}\b))',
+        r'\b(?:Address|Add|Address[:])\s*[:\-]?\s*([A-Za-z0-9\s\,\.\-\/\n]{10,200}?(?:\b\d{3}\s?\d{3}\b))',
         text, re.IGNORECASE | re.DOTALL)
     # Pattern 2: "s/o ... <city> <state> <pin>" which is Aadhaar format
     aadhaar_address = re.search(
-        r's[\/\\]o\s+[A-Za-z\s\.]+,?\s+([A-Za-z0-9\s\,\.\-]+\d{6})',
+        r's[\/\\]o\s+[A-Za-z\s\.]+,?\s+([A-Za-z0-9\s\,\.\-]+\d{3}\s?\d{3})',
         text, re.IGNORECASE)
     if address_match:
         form_fill["address"] = re.sub(r'\s+', ' ', address_match.group(1)).strip()
     elif aadhaar_address:
         form_fill["address"] = re.sub(r'\s+', ' ', aadhaar_address.group(0)).strip()
     else:
-        pin_match = re.search(r'([A-Za-z0-9\s\,\.\-\/]{20,150}?\b\d{6}\b)', text)
+        # Fallback: Capture up to 150 chars before a PIN code
+        pin_match = re.search(r'([A-Za-z0-9\s\,\.\-\/]{20,150}?\b\d{3}\s?\d{3}\b)', text)
         if pin_match:
             form_fill["address"] = re.sub(r'\s+', ' ', pin_match.group(1)).strip()
 

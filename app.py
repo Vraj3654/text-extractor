@@ -151,7 +151,7 @@ async def upload_image(
         file_bytes = await file.read()
         
         if file.filename.lower().endswith(".pdf"):
-            pages = convert_from_bytes(file_bytes)
+            pages = convert_from_bytes(file_bytes, dpi=300)
             if not pages:
                 raise ValueError("PDF contains no pages")
             
@@ -256,7 +256,8 @@ async def upload_id_document(
             import numpy as np
             import cv2
             
-            pages = convert_from_bytes(file_bytes)
+            # Use 300 DPI for IDs to ensure small text (like Aadhaar) is readable
+            pages = convert_from_bytes(file_bytes, dpi=300)
             if not pages:
                 raise ValueError("PDF contains no pages")
             

@@ -6,39 +6,8 @@ import sys
 sys.path.insert(0, ".")
 import document_analysis
 
-# This is the approximate text Tesseract would extract from the sample Aadhaar card
-SAMPLE_AADHAAR_TEXT = """
-Unique Identification Authority of India
-Government of India
-
-Enrolment No.: 1118/00006/XXXXX
-
-To : JoeGoaUk
-s/o PioGoaUk
-H. No. 12XX
-Tarir,
-Agassaim
-North Goa
-Goa - 403204
-Mobile : 988XXXXXXXX
-
-Ref. No : 00002335-00137106-xxxxxxxx -Goa-Panaji
-
-UB 06722XXXX IN
-
-Your Aadhaar No. :
-5911 3340 XXXX
-
-GOVERNMENT OF INDIA
-JoeGoaUk
-Year of Birth : 1947
-Male
-
-5911 3340 XXXX
-
-Address: s/o PioGoaUk, House No. 12XX, Tarir, Agassaim, Goa-Panaji,
-North Goa, Goa, 403204
-"""
+with open("test_aadhaar.txt", "r") as f:
+    SAMPLE_AADHAAR_TEXT = f.read()
 
 print("=" * 60)
 print("TESTING EXTRACT_KEY_INFO AGAINST AADHAAR SAMPLE TEXT")
