@@ -87,14 +87,11 @@ def classify_document(text: str) -> Dict[str, Any]:
 
 
 # ===========================
-# KEY INFO EXTRACTION
-# ===========================
-
-def extract_key_info(text: str) -> Dict[str, Any]:
+# KEY INFO EXTRACTIdef extract_key_info(text: str) -> Dict[str, Any]:
     """Extract structured key information from OCR text using regex."""
     info = {}
 
-    # Dates (multiple formats)
+    # ── Dates (multiple formats) ──────────────────────────────────────────────
     date_patterns = [
         r'\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b',
         r'\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b',
@@ -106,79 +103,80 @@ def extract_key_info(text: str) -> Dict[str, Any]:
     if dates:
         info["dates"] = list(dict.fromkeys(dates))[:5]
 
-    # Email addresses
+    # ── Email ─────────────────────────────────────────────────────────────────
     emails = re.findall(r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b', text)
     if emails:
         info["emails"] = list(dict.fromkeys(emails))[:5]
 
-    # Phone numbers
+    # ── Phone numbers ─────────────────────────────────────────────────────────
     phones = re.findall(
-        r'(?:\+?\d{1,3}[\s\-]?)?(?:\(?\d{2,4}\)?[\s\-]?)?\d{3,4}[\s\-]?\d{3,4}(?:[\s\-]?\d{2,4})?', text)
+        r'(?:\+?91[\s\-]?)?(?:[6-9]\d{9}|(?:\(?0\d{2,4}\)?[\s\-]?)?\d{6,8})', text)
     phones = [p.strip() for p in phones if len(re.sub(r'\D', '', p)) >= 7]
     if phones:
         info["phone_numbers"] = list(dict.fromkeys(phones))[:5]
 
-    # Money / Amounts
+    # ── Money / Amounts ───────────────────────────────────────────────────────
     amounts = re.findall(
-        r'(?:₹|Rs\.?|INR|USD|\$|€|£)\s*[\d,]+(?:\.\d{1,2})?|[\d,]+(?:\.\d{1,2})?\s*(?:₹|Rs\.?|INR|USD|\$|€|£)',
+        r'(?:₹|Rs\.?|INR|USD|\$|€|£)\s*[\d,]+(?:\.\d{1,2})?|[\d,]+(?:\.\d{1,2})?\s*(?:₹|Rs\.?|INR)',
         text, re.IGNORECASE)
     if amounts:
         info["amounts"] = list(dict.fromkeys(amounts))[:5]
 
-    # URLs/Websites
-    urls = re.findall(r'(?:https?://|www\.)[^\s<>"\'\]]+', text, re.IGNORECASE)
-    if urls:
-        info["urls"] = list(dict.fromkeys(urls))[:3]
-
-    # PAN Number (India)
+    # ── PAN Number ───────────────────────────────────────────────────────────
     pan = re.findall(r'\b[A-Z]{5}\d{4}[A-Z]\b', text)
     if pan:
         info["pan_numbers"] = list(dict.fromkeys(pan))
 
-    # Aadhaar Number (India, 12 digits possibly spaced)
+    # ── Aadhaar Number (12 digits, possibly spaced in groups of 4) ───────────
     aadhaar = re.findall(r'\b\d{4}\s?\d{4}\s?\d{4}\b', text)
     if aadhaar:
         info["aadhaar_numbers"] = list(dict.fromkeys(aadhaar))[:2]
 
-    # Percentages
+    # ── Percentages ───────────────────────────────────────────────────────────
     percentages = re.findall(r'\b\d+(?:\.\d+)?%', text)
     if percentages:
         info["percentages"] = list(dict.fromkeys(percentages))[:5]
 
-    # Named entities: simple heuristic (Title Case words)
-    # Extract lines with "Name:", "Customer:", etc.
-    name_labels = re.findall(
-        r'(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\s*[:\-]\s*([A-Z][a-zA-Z \.]{2,40})',
+    # ── URLs ──────────────────────────────────────────────────────────────────
+    urls = re.findall(r'(?:https?://|www\.)[^\s<>"\']+', text, re.IGNORECASE)
+    if urls:
+        info["urls"] = list(dict.fromkeys(urls))[:3]
+
+    # =========================================================================
+    # SMART FORM AUTO-FILL (Aadhaar-aware)
+    # =========================================================================
+    form_fill = {"name": "", "dob": "", "address": "", "gender": ""}
+
+    # ── Name ─────────────────────────────────────────────────────────────────
+    # Pattern 1: explicit "Name :" or "To :" label (Aadhaar front says "To : <Name>")
+    name_from_label = re.search(
+        r'\b(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\s*[:\-]\s*([A-Z][a-zA-Z\s\.]{1,40})',
         text, re.IGNORECASE)
-    if name_labels:
-        info["names"] = [n.strip() for n in name_labels[:3]]
+    # Pattern 2: "Government of India" block followed by a standalone name line
+    name_after_gov = re.search(
+        r'Government of India\s+([A-Z][a-zA-Z\s\.]{2,40})\s*\n', text)
+    if name_from_label:
+        form_fill["name"] = name_from_label.group(1).strip().split('\n')[0]
+    elif name_after_gov:
+        form_fill["name"] = name_after_gov.group(1).strip()
 
-    # ===========================
-    # SMART FORM AUTO-FILL DATA
-    # ===========================
-    form_fill = {
-        "name": "",
-        "dob": "",
-        "address": "",
-        "gender": ""
-    }
+    # ── Date of Birth ─────────────────────────────────────────────────────────
+    # Pattern 1: explicit DOB / Date of Birth keyword with date
+    specific_dob = re.search(
+        r'\b(?:DOB|Date of Birth|Birth Date)\b\s*[:\-]?\s*'
+        r'((?:[0-3]?\d[\/\-\.][0-1]?\d[\/\-\.]\d{2,4})|(?:[0-3]?\d\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4}))',
+        text, re.IGNORECASE)
+    # Pattern 2: "Year of Birth : 1947" (Aadhaar-specific)
+    yob = re.search(r'\b(?:Year of Birth|YOB)\s*[:\-]?\s*(\d{4})\b', text, re.IGNORECASE)
 
-    # 1. Name
-    if name_labels:
-        form_fill["name"] = name_labels[0].strip()
-    else:
-        specific_name = re.search(r'\b(?:Name|Name of Applicant)\b\s*[:\-]?\s*([A-Z][a-zA-Z \.]{2,40})', text, re.IGNORECASE)
-        if specific_name:
-            form_fill["name"] = specific_name.group(1).strip()
-
-    # 2. DOB
-    specific_dob = re.search(r'\b(?:DOB|Date of Birth|Birth|YOB)\b\s*[:\-]?\s*((?:[0-3]?\d[\/\-\.][0-1]?\d[\/\-\.]\d{2,4})|(?:[0-3]?\d\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4}))', text, re.IGNORECASE)
     if specific_dob:
         form_fill["dob"] = specific_dob.group(1).strip()
+    elif yob:
+        form_fill["dob"] = yob.group(1).strip()
     elif dates:
         form_fill["dob"] = dates[0]
 
-    # 3. Gender
+    # ── Gender ────────────────────────────────────────────────────────────────
     gender_match = re.search(r'\b(?:Gender|Sex)\b\s*[:\-]?\s*(Male|Female|Transgender|M|F)\b', text, re.IGNORECASE)
     if gender_match:
         form_fill["gender"] = gender_match.group(1).capitalize()
@@ -187,17 +185,33 @@ def extract_key_info(text: str) -> Dict[str, Any]:
         if implicit_g:
             form_fill["gender"] = implicit_g.group(1).capitalize()
 
-    # 4. Address (Look for 'Address' keyword or a block ending with a 6-digit PIN)
-    address_match = re.search(r'\b(?:Address|Add)\b\s*[:\-]?\s*([A-Za-z0-9\s\,\.\-\/\n]{10,150}?\b\d{6}\b)', text, re.IGNORECASE)
+    # ── Address ───────────────────────────────────────────────────────────────
+    # Pattern 1: explicit "Address :" keyword block
+    address_match = re.search(
+        r'\b(?:Address|Add)\b\s*[:\-]?\s*([A-Za-z0-9\s\,\.\-\/\n]{10,200}?(?:\b\d{6}\b))',
+        text, re.IGNORECASE | re.DOTALL)
+    # Pattern 2: "s/o ... <city> <state> <pin>" which is Aadhaar format
+    aadhaar_address = re.search(
+        r's[\/\\]o\s+[A-Za-z\s\.]+,?\s+([A-Za-z0-9\s\,\.\-]+\d{6})',
+        text, re.IGNORECASE)
     if address_match:
         form_fill["address"] = re.sub(r'\s+', ' ', address_match.group(1)).strip()
+    elif aadhaar_address:
+        form_fill["address"] = re.sub(r'\s+', ' ', aadhaar_address.group(0)).strip()
     else:
-        pin_match = re.search(r'([A-Za-z0-9\s\,\.\-\/]{20,100}?\b\d{6}\b)', text)
+        pin_match = re.search(r'([A-Za-z0-9\s\,\.\-\/]{20,150}?\b\d{6}\b)', text)
         if pin_match:
             form_fill["address"] = re.sub(r'\s+', ' ', pin_match.group(1)).strip()
 
-    info["form_fill"] = form_fill
+    # ── Phone from form ───────────────────────────────────────────────────────
+    mob = re.search(r'(?:Mobile|Mob|Ph|Phone)\s*[:\-]?\s*(\+?[\d\s\-]{8,15})', text, re.IGNORECASE)
+    if mob:
+        info.setdefault("phone_numbers", [])
+        mob_clean = re.sub(r'\D', '', mob.group(1))
+        if mob_clean not in [re.sub(r'\D', '', p) for p in info["phone_numbers"]]:
+            info["phone_numbers"].append(mob.group(1).strip())
 
+    info["form_fill"] = form_fill
     return info
 
 

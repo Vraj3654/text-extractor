@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     tesseract-ocr-osd \
+    tesseract-ocr-hin \
+    tesseract-ocr-guj \
+    tesseract-ocr-tel \
+    tesseract-ocr-tam \
     libgl1 \
     libglib2.0-0 \
     poppler-utils \

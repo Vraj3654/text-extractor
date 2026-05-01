@@ -187,13 +187,22 @@ async def upload_image(
             }
         else:
             filename_lower = file.filename.lower()
+            # Map shorthand language codes to Tesseract multi-language strings
+            LANG_MAP = {
+                "hin": "hin+eng",   # Aadhaar / Hindi docs need both scripts
+                "guj": "guj+eng",
+                "tel": "tel+eng",
+                "tam": "tam+eng",
+            }
+            tess_lang = LANG_MAP.get(language, language)
+
             # Use gentler camera pipeline for JPEG photos (phone shots of ID cards, etc.)
             # Use heavy scan pipeline for PNG/TIFF which are typically scanned documents
             if filename_lower.endswith(('.jpg', '.jpeg')):
                 processed_img_array = preprocess.preprocess_camera_image(file_bytes)
             else:
                 processed_img_array = preprocess.preprocess_image(file_bytes)
-            result = extract_text.extract_text_from_image(processed_img_array, languages=language)
+            result = extract_text.extract_text_from_image(processed_img_array, languages=tess_lang)
             
     except Exception as e:
         import traceback
