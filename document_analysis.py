@@ -151,15 +151,15 @@ def extract_key_info(text: str) -> Dict[str, Any]:
     form_fill = {"name": "", "dob": "", "address": "", "gender": ""}
 
     # ── Name ─────────────────────────────────────────────────────────────────
-    # Pattern 1: explicit "Name :" or "To :" label (Aadhaar front says "To : <Name>")
+    # Pattern 1: explicit "Name" or "To" label (Aadhaar front says "To\n<Name>")
     name_from_label = re.search(
-        r'\b(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\s*[:\-]\s*([a-zA-Z][a-zA-Z\s\.]{1,40})',
+        r'\b(?:Name|Customer|Client|To|Student|Employee|Holder|Recipient)\b\s*[:\-]?\s*\n?([a-zA-Z][a-zA-Z\s\.]{2,40})\n',
         text, re.IGNORECASE)
     # Pattern 2: "Government of India" block followed by a standalone name line
     name_after_gov = re.search(
         r'Government of India\s+([a-zA-Z][a-zA-Z\s\.]{2,40})\s*\n', text, re.IGNORECASE)
     if name_from_label:
-        form_fill["name"] = name_from_label.group(1).strip().split('\n')[0]
+        form_fill["name"] = name_from_label.group(1).strip()
     elif name_after_gov:
         form_fill["name"] = name_after_gov.group(1).strip()
 
@@ -201,18 +201,13 @@ def extract_key_info(text: str) -> Dict[str, Any]:
             form_fill["gender"] = implicit_g.group(1).capitalize()
 
     # ── Address ───────────────────────────────────────────────────────────────
-    # Pattern 1: explicit "Address :" keyword block
+    # Aadhaar/Pan/General Address: Look for Address keyword or C/O, S/O, W/O, D/O
+    # and capture everything up to the 6-digit PIN code.
     address_match = re.search(
-        r'\b(?:Address|Add|Address[:])\s*[:\-]?\s*([A-Za-z0-9\s\,\.\-\/\n]{10,200}?(?:\b\d{3}\s?\d{3}\b))',
-        text, re.IGNORECASE | re.DOTALL)
-    # Pattern 2: "s/o ... <city> <state> <pin>" which is Aadhaar format
-    aadhaar_address = re.search(
-        r's[\/\\]o\s+[A-Za-z\s\.]+,?\s+([A-Za-z0-9\s\,\.\-]+\d{3}\s?\d{3})',
+        r'((?:s[\/\\]o|c[\/\\]o|w[\/\\]o|d[\/\\]o|Address|Add)[:\-\s]*[\s\S]{10,200}?\b\d{3}\s?\d{3}\b)',
         text, re.IGNORECASE)
     if address_match:
         form_fill["address"] = re.sub(r'\s+', ' ', address_match.group(1)).strip()
-    elif aadhaar_address:
-        form_fill["address"] = re.sub(r'\s+', ' ', aadhaar_address.group(0)).strip()
     else:
         # Fallback: Capture up to 150 chars before a PIN code
         pin_match = re.search(r'([A-Za-z0-9\s\,\.\-\/]{20,150}?\b\d{3}\s?\d{3}\b)', text)
