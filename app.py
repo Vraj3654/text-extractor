@@ -105,7 +105,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     hashed_pw = get_password_hash(user.password)
-    new_user = models.User(username=user.username, password_hash=hashed_pw)
+    new_user = models.User(username=user.username, hashed_password=hashed_pw)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
