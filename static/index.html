@@ -185,13 +185,11 @@
       </div>
       <p class="muted" style="margin-bottom: 1rem;">Upload an Identity Document (Aadhaar, PAN, Passport) to automatically extract key information.</p>
       
-      <!-- Smart Form ID Upload Area -->
-      <div class="upload-area" id="id-dropzone">
-        <div class="drop-icon">🪪</div>
-        <h3>Upload Identity Document</h3>
-        <div style="margin-top: 1rem; margin-bottom: 1rem; text-align: left; max-width: 300px; margin-inline: auto;">
-          <label for="id-language-select" style="font-size: 0.9rem;">Document Language:</label>
-          <select id="id-language-select" style="width: 100%; padding: 0.5rem; margin-top: 0.25rem;">
+      <!-- Toolbar for ID Upload -->
+      <div class="toolbar">
+        <div class="field-group">
+          <label for="id-language-select">🌐 Document Language</label>
+          <select id="id-language-select">
             <option value="hin">Hindi + English (Aadhaar / Indian ID)</option>
             <option value="eng">English Only</option>
             <option value="guj">Gujarati</option>
@@ -199,9 +197,18 @@
             <option value="tam">Tamil</option>
           </select>
         </div>
-        <p class="drop-sub">Supports JPG, PNG, and PDF up to 10MB</p>
-        <label for="id-file-input" class="btn btn-primary">Browse Files</label>
-        <input type="file" id="id-file-input" accept=".jpg,.jpeg,.png,.pdf" hidden/>
+      </div>
+
+      <!-- Smart Form ID Dropzone -->
+      <div class="dropzone" id="id-dropzone">
+        <div class="dropzone-inner">
+          <div class="upload-icon">🪪</div>
+          <p class="drop-title">Upload Identity Document</p>
+          <p class="drop-sub">Supports JPG, PNG, and PDF up to 10MB</p>
+          <label for="id-file-input" class="btn btn-primary">Browse Files</label>
+          <input type="file" id="id-file-input" accept=".jpg,.jpeg,.png,.pdf" hidden/>
+        </div>
+        <div class="drop-overlay" id="id-drop-overlay">Drop to extract ID</div>
       </div>
 
       <!-- ID Progress -->
