@@ -221,7 +221,11 @@ async function runAnalysis(docId) {
     const data = await res.json();
     classifyLoading.style.display = 'none';
     renderClassification(data.classification);
-    renderAutoFillForm(data.key_info);
+
+    const filled = renderAutoFillForm(data.key_info);
+    if (filled) {
+      showToast('✍️ Smart Form filled! Check the 📋 Smart Form tab.');
+    }
   } catch (e) {
     classifyLoading.textContent = 'Analysis unavailable';
   }
@@ -486,22 +490,23 @@ function showToast(msg) {
 // FORM AUTO-FILL
 // =====================
 function renderAutoFillForm(info) {
-  if (!info) return;
+  if (!info) return false;
 
   const fFill = info.form_fill || {};
-  
-  // Set direct single-value extracts
+
   document.getElementById('fill-name').value = fFill.name || '';
   document.getElementById('fill-dob').value = fFill.dob || '';
   document.getElementById('fill-gender').value = fFill.gender || '';
   document.getElementById('fill-address').value = fFill.address || '';
 
-  // For arrays, pick the first item
   const emails = info.emails || [];
   document.getElementById('fill-email').value = emails.length > 0 ? emails[0] : '';
 
   const phones = info.phone_numbers || [];
   document.getElementById('fill-phone').value = phones.length > 0 ? phones[0] : '';
+
+  // Return true if at least one field was filled
+  return !!(fFill.name || fFill.dob || fFill.gender || fFill.address || emails.length || phones.length);
 }
 
 function copyFormData() {

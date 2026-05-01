@@ -186,7 +186,13 @@ async def upload_image(
                 "detected_language": final_lang
             }
         else:
-            processed_img_array = preprocess.preprocess_image(file_bytes)
+            filename_lower = file.filename.lower()
+            # Use gentler camera pipeline for JPEG photos (phone shots of ID cards, etc.)
+            # Use heavy scan pipeline for PNG/TIFF which are typically scanned documents
+            if filename_lower.endswith(('.jpg', '.jpeg')):
+                processed_img_array = preprocess.preprocess_camera_image(file_bytes)
+            else:
+                processed_img_array = preprocess.preprocess_image(file_bytes)
             result = extract_text.extract_text_from_image(processed_img_array, languages=language)
             
     except Exception as e:
