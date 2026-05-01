@@ -150,6 +150,26 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) handleFileUpload(fileInput.files[0]);
 });
 
+// ID Dropzone
+const idDropzone = document.getElementById('id-dropzone');
+const idFileInput = document.getElementById('id-file-input');
+
+if (idDropzone) {
+  idDropzone.addEventListener('dragover', e => { e.preventDefault(); idDropzone.classList.add('drag-over'); });
+  idDropzone.addEventListener('dragleave', () => idDropzone.classList.remove('drag-over'));
+  idDropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    idDropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleIdUpload(e.dataTransfer.files[0]);
+  });
+  idDropzone.addEventListener('click', e => {
+    if (!e.target.closest('label') && !e.target.closest('select')) idFileInput.click();
+  });
+  idFileInput.addEventListener('change', () => {
+    if (idFileInput.files[0]) handleIdUpload(idFileInput.files[0]);
+  });
+}
+
 // =====================
 // UPLOAD & OCR
 // =====================
@@ -179,7 +199,6 @@ async function handleFileUpload(file) {
 
     currentDocId = data.id;
     displayOCRResult(data);
-    await runAnalysis(data.id);
     showProgress(false);
   } catch (err) {
     showProgress(false);
@@ -208,37 +227,67 @@ function displayOCRResult(data) {
   document.getElementById('translate-loading').style.display = 'none';
 }
 
-// =====================
-// ANALYSIS (Classification + Key Info)
-// =====================
-async function runAnalysis(docId) {
-  const classifyLoading = document.getElementById('classify-loading');
-  classifyLoading.style.display = 'inline';
+async function handleIdUpload(file) {
+  if (uploadInProgress) return;
+  if (file.size > 10 * 1024 * 1024) { alert('File too large (max 10MB)'); return; }
+
+  uploadInProgress = true;
+  document.getElementById('id-progress-bar').style.display = 'block';
+
+  const language = document.getElementById('id-language-select').value;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('language', language);
 
   try {
-    const res = await authFetch(`/api/analyze/${docId}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    classifyLoading.style.display = 'none';
-    renderClassification(data.classification);
+    let progress = 0;
+    const pFill = document.getElementById('id-progress-fill');
+    const timer = setInterval(() => {
+      progress += Math.random() * 5;
+      if(progress > 90) progress = 90;
+      pFill.style.width = progress + '%';
+    }, 200);
 
+    const res = await authFetch('/api/upload-id', { method: 'POST', body: formData });
+    clearInterval(timer);
+    pFill.style.width = '100%';
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Upload failed');
+    }
+    const data = await res.json();
+    
+    // Auto-fill and classify
+    renderClassification(data.classification, 'id-classify-result');
     const filled = renderAutoFillForm(data.key_info);
     if (filled) {
-      showToast('✍️ Smart Form filled! Check the 📋 Smart Form tab.');
+      showToast('✍️ Smart Form filled successfully!');
     }
-  } catch (e) {
-    classifyLoading.textContent = 'Analysis unavailable';
+
+    setTimeout(() => {
+      document.getElementById('id-progress-bar').style.display = 'none';
+      pFill.style.width = '0%';
+    }, 500);
+
+  } catch (err) {
+    document.getElementById('id-progress-bar').style.display = 'none';
+    alert('❌ Error: ' + err.message);
+  } finally {
+    uploadInProgress = false;
+    document.getElementById('id-file-input').value = '';
   }
 }
 
-function renderClassification(c) {
-  const el = document.getElementById('classify-result');
+function renderClassification(c, elementId = 'classify-result') {
+  const el = document.getElementById(elementId);
+  if (!el) return;
   if (!c || c.type === 'Unknown') {
     el.innerHTML = '<span class="muted">Could not classify document.</span>';
     return;
   }
   el.innerHTML = `
-    <div class="classify-icon">${c.icon}</div>
+    <div class="classify-icon">${c.icon || '📄'}</div>
     <div class="classify-info">
       <h4>${c.type}</h4>
       <p>Document type identified by AI keyword analysis</p>

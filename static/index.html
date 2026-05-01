@@ -112,15 +112,6 @@
     <!-- Results Panel (hidden until upload) -->
     <div id="results-panel" style="display:none">
 
-      <!-- Classification Card -->
-      <div class="card card-classify" id="classify-card">
-        <div class="card-header">
-          <h3>📂 Document Classification</h3>
-          <span class="loading-dots" id="classify-loading">Analyzing...</span>
-        </div>
-        <div id="classify-result" class="classify-result"></div>
-      </div>
-
 
 
       <!-- OCR Output -->
@@ -192,7 +183,34 @@
         <h3>📋 Smart Auto-Fill Form</h3>
         <button class="btn btn-sm btn-accent" onclick="copyFormData()">📋 Copy JSON</button>
       </div>
-      <p class="muted" style="margin-bottom: 1rem;">Information automatically extracted from your last uploaded document will appear here.</p>
+      <p class="muted" style="margin-bottom: 1rem;">Upload an Identity Document (Aadhaar, PAN, Passport) to automatically extract key information.</p>
+      
+      <!-- Smart Form ID Upload Area -->
+      <div class="upload-area" id="id-dropzone">
+        <div class="drop-icon">🪪</div>
+        <h3>Upload Identity Document</h3>
+        <div style="margin-top: 1rem; margin-bottom: 1rem; text-align: left; max-width: 300px; margin-inline: auto;">
+          <label for="id-language-select" style="font-size: 0.9rem;">Document Language:</label>
+          <select id="id-language-select" style="width: 100%; padding: 0.5rem; margin-top: 0.25rem;">
+            <option value="hin">Hindi + English (Aadhaar / Indian ID)</option>
+            <option value="eng">English Only</option>
+            <option value="guj">Gujarati</option>
+            <option value="tel">Telugu</option>
+            <option value="tam">Tamil</option>
+          </select>
+        </div>
+        <p class="drop-sub">Supports JPG, PNG, and PDF up to 10MB</p>
+        <label for="id-file-input" class="btn btn-primary">Browse Files</label>
+        <input type="file" id="id-file-input" accept=".jpg,.jpeg,.png,.pdf" hidden/>
+      </div>
+
+      <!-- ID Progress -->
+      <div class="progress-bar" id="id-progress-bar" style="display:none; margin-bottom: 1.5rem;">
+        <div class="progress-fill" id="id-progress-fill"></div>
+      </div>
+
+      <!-- Classification Result for ID -->
+      <div id="id-classify-result" class="classify-result" style="margin-bottom: 1.5rem;"></div>
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Full Name</label>

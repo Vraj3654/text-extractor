@@ -9,7 +9,7 @@ import models
 import os
 import shutil
 from datetime import datetime, timedelta
-import preprocess
+import image_pipeline
 import extract_text
 import document_analysis
 from pdf2image import convert_from_bytes
@@ -196,12 +196,8 @@ async def upload_image(
             }
             tess_lang = LANG_MAP.get(language, language)
 
-            # Use gentler camera pipeline for JPEG photos (phone shots of ID cards, etc.)
-            # Use heavy scan pipeline for PNG/TIFF which are typically scanned documents
-            if filename_lower.endswith(('.jpg', '.jpeg')):
-                processed_img_array = preprocess.preprocess_camera_image(file_bytes)
-            else:
-                processed_img_array = preprocess.preprocess_image(file_bytes)
+            # General document upload always uses the scan pipeline
+            processed_img_array = image_pipeline.process_scanned_document(file_bytes)
             result = extract_text.extract_text_from_image(processed_img_array, languages=tess_lang)
             
     except Exception as e:
@@ -230,6 +226,68 @@ async def upload_image(
         "confidence": new_doc.confidence,
         "created_at": new_doc.created_at
     }
+
+@app.post("/api/upload-id")
+async def upload_id_document(
+    file: UploadFile = File(...), 
+    language: str = Form("eng"), 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    """Specific endpoint for Identity Documents (Smart Form feature)"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No selected file")
+    
+    try:
+        file_bytes = await file.read()
+        
+        # Map shorthand language codes to Tesseract multi-language strings
+        LANG_MAP = {
+            "hin": "hin+eng",
+            "guj": "guj+eng",
+            "tel": "tel+eng",
+            "tam": "tam+eng",
+        }
+        tess_lang = LANG_MAP.get(language, language)
+
+        # ID documents always use the gentler ID pipeline (preserves details of photos/cards)
+        processed_img_array = image_pipeline.process_id_document(file_bytes)
+        result = extract_text.extract_text_from_image(processed_img_array, languages=tess_lang)
+        
+        # Immediately run analysis for ID documents
+        text = result.get("corrected_text", "") or result.get("raw_text", "")
+        classification = document_analysis.classify_document(text)
+        key_info = document_analysis.extract_key_info(text)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    # Save the document history
+    new_doc = models.Document(
+        filename=file.filename,
+        raw_text=result.get("raw_text", ""),
+        corrected_text=result.get("corrected_text", ""),
+        language=result.get("detected_language", "unknown"),
+        confidence=result.get("confidence", 0.0),
+        user_id=current_user.id
+    )
+    db.add(new_doc)
+    db.commit()
+    db.refresh(new_doc)
+    
+    return {
+        "id": new_doc.id,
+        "filename": new_doc.filename,
+        "raw_text": new_doc.raw_text,
+        "corrected_text": new_doc.corrected_text,
+        "language": new_doc.language,
+        "confidence": new_doc.confidence,
+        "classification": classification,
+        "key_info": key_info
+    }
+
 
 @app.get("/api/history")
 def get_history(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -334,9 +392,10 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
 
         import pytesseract
 
+        # Use unified image pipeline for camera snapshots
+        processed = image_pipeline.process_camera_snapshot(img_bytes, handwriting_mode)
+
         if handwriting_mode:
-            # Handwriting pipeline: Otsu + dilation + PSM 11 (sparse text)
-            processed = preprocess.preprocess_handwriting_image(img_bytes)
             # Try PSM 11 (sparse text) — best for handwriting
             psm11_text = pytesseract.image_to_string(processed, config='--oem 3 --psm 11').strip()
             # Try PSM 6 (single uniform block) as fallback
@@ -344,8 +403,6 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
             # Use whichever gives more output
             raw_text = psm11_text if len(psm11_text) >= len(psm6_text) else psm6_text
         else:
-            # Printed text pipeline: gentle sharpen + PSM 3
-            processed = preprocess.preprocess_camera_image(img_bytes)
             raw_text = pytesseract.image_to_string(processed, config='--oem 3 --psm 3').strip()
 
         # Confidence score
