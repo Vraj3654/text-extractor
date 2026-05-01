@@ -23,22 +23,28 @@
 <div id="auth-overlay" class="auth-overlay">
   <div class="auth-box card" style="max-width: 400px; margin: 10vh auto; padding: 2rem;">
     <h2>Welcome to <span class="gradient-text">Pro</span></h2>
-    <p class="muted">Sign in to access tools & workflows.</p>
+    <p class="muted" id="auth-desc">Sign in to access tools & workflows.</p>
     
     <div class="form-group" style="margin-top: 1rem;">
       <label class="form-label">Username</label>
       <input type="text" id="auth-username" class="form-input" placeholder="Enter username" />
     </div>
-    <div class="form-group" style="margin-top: 1rem;">
+    <div class="form-group" style="margin-top: 1rem; position: relative;">
       <label class="form-label">Password</label>
-      <input type="password" id="auth-password" class="form-input" placeholder="Enter password" />
+      <input type="password" id="auth-password" class="form-input" placeholder="Enter password" style="padding-right: 40px;" />
+      <button class="btn-sm" style="position: absolute; right: 8px; top: 28px; background: transparent; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted);" onclick="togglePassword()">👁</button>
     </div>
     
-    <div class="auth-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-      <button class="btn btn-primary" style="flex:1" onclick="handleLogin()">Login</button>
-      <button class="btn" style="flex:1" onclick="handleRegister()">Register</button>
+    <div class="auth-actions" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
+      <button class="btn btn-primary" id="login-btn" onclick="handleLogin()" style="width: 100%; justify-content: center;">Login</button>
+      <button class="btn btn-accent" id="register-btn" onclick="handleRegister()" style="display: none; width: 100%; justify-content: center;">Create Account</button>
+      <p style="text-align: center; font-size: 0.85rem; margin-top: 0.5rem;" class="muted">
+        <span id="auth-toggle-text">Don't have an account?</span> 
+        <a href="#" id="auth-toggle-link" style="color: var(--primary); text-decoration: none; font-weight: 600;" onclick="toggleAuthMode()">Register here</a>
+      </p>
     </div>
-    <div id="auth-error" class="error-msg" style="color: #ff4d4d; margin-top: 1rem; font-size: 0.85rem; display:none;"></div>
+    <div id="auth-error" class="error-msg" style="color: #ff4d4d; margin-top: 1rem; font-size: 0.85rem; display:none; text-align: center;"></div>
+    <div id="auth-success" class="error-msg" style="color: #4ade80; margin-top: 1rem; font-size: 0.85rem; display:none; text-align: center;"></div>
   </div>
 </div>
 
@@ -64,7 +70,7 @@
   <!-- TABS -->
   <nav class="tabs">
     <button class="tab active" data-tab="upload" id="tab-upload">📤 Upload & OCR</button>
-    <button class="tab" data-tab="workflow" id="tab-workflow">⚡ Workflows</button>
+    <button class="tab" data-tab="autofill" id="tab-autofill">📋 Smart Form</button>
     <button class="tab" data-tab="camera" id="tab-camera">📷 Live Camera</button>
     <button class="tab" data-tab="history" id="tab-history">📋 History</button>
   </nav>
@@ -118,47 +124,7 @@
         <div id="classify-result" class="classify-result"></div>
       </div>
 
-      <!-- Key Info Card -->
-      <div class="card card-info" id="info-card">
-        <div class="card-header">
-          <h3>🔍 Key Information Extracted</h3>
-        </div>
-        <div id="key-info-result" class="key-info-grid"></div>
-      </div>
 
-      <!-- Auto-Fill Form Card -->
-      <div class="card card-autofill" id="autofill-card">
-        <div class="card-header">
-          <h3>📋 Smart Auto-Fill Form</h3>
-          <button class="btn btn-sm btn-accent" onclick="copyFormData()">📋 Copy JSON</button>
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Full Name</label>
-            <input type="text" class="form-input" id="fill-name" placeholder="-- Extracted Name --" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date of Birth</label>
-            <input type="text" class="form-input" id="fill-dob" placeholder="-- Extracted DOB --" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <input type="text" class="form-input" id="fill-gender" placeholder="-- Extracted Gender --" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Phone Number</label>
-            <input type="text" class="form-input" id="fill-phone" placeholder="-- Extracted Phone --" />
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">Email Address</label>
-            <input type="email" class="form-input" id="fill-email" placeholder="-- Extracted Email --" />
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">Full Address</label>
-            <textarea class="form-input" id="fill-address" rows="3" placeholder="-- Extracted Address --"></textarea>
-          </div>
-        </div>
-      </div>
 
       <!-- OCR Output -->
       <div class="card-row">
@@ -222,60 +188,39 @@
     </div>
   </section>
 
-  <!-- ===== TAB: WORKFLOWS ===== -->
-  <section class="tab-content" id="tab-content-workflow">
-    <div class="card">
+  <!-- ===== TAB: SMART FORM ===== -->
+  <section class="tab-content" id="tab-content-autofill">
+    <div class="card card-autofill" id="autofill-card">
       <div class="card-header">
-        <h3>⚡ Custom Zapier-Style Workflows</h3>
-        <button class="btn btn-primary btn-sm" onclick="executeWorkflow()">▶ Run Workflow</button>
+        <h3>📋 Smart Auto-Fill Form</h3>
+        <button class="btn btn-sm btn-accent" onclick="copyFormData()">📋 Copy JSON</button>
       </div>
-      <p class="muted" style="margin-bottom: 1rem;">Chain operations automatically on uploaded documents. Executing costs 1 Credit.</p>
-
-      <div class="workflow-builder">
-        <div class="wf-step">
-          <div class="wf-step-num">1</div>
-          <div class="wf-step-content">
-            <h4 style="margin-bottom: 0.5rem;">Trigger: File Upload</h4>
-            <input type="file" id="wf-file-input" accept=".jpg,.png,.pdf" class="form-input"/>
-          </div>
+      <p class="muted" style="margin-bottom: 1rem;">Information automatically extracted from your last uploaded document will appear here.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="fill-name" placeholder="-- Extracted Name --" />
         </div>
-        
-        <div class="wf-step" style="margin-top: 1rem;">
-          <div class="wf-step-num">2</div>
-          <div class="wf-step-content">
-             <h4 style="margin-bottom: 0.5rem;">Action 1: Processing</h4>
-             <select id="wf-action-1" class="form-input">
-                <option value="extract">Basic OCR Extraction (Default)</option>
-                <option value="extract_info">Smart Form Auto-Fill</option>
-                <option value="classify">Document Classification</option>
-             </select>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input type="text" class="form-input" id="fill-dob" placeholder="-- Extracted DOB --" />
         </div>
-
-        <div class="wf-step" style="margin-top: 1rem;">
-          <div class="wf-step-num">3</div>
-          <div class="wf-step-content">
-             <h4 style="margin-bottom: 0.5rem;">Action 2: Translation</h4>
-             <select id="wf-action-2" class="form-input">
-                <option value="none">No Translation</option>
-                <option value="translate:hi">Translate to Hindi</option>
-                <option value="translate:fr">Translate to French</option>
-                <option value="translate:es">Translate to Spanish</option>
-             </select>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <input type="text" class="form-input" id="fill-gender" placeholder="-- Extracted Gender --" />
         </div>
-      </div>
-
-      <div id="wf-loading" class="loading-dots" style="display:none; margin-top:1rem;">Executing Workflow Pipeline...</div>
-      
-      <div class="wf-result card-row" id="wf-result" style="display:none; margin-top: 1.5rem;">
-         <div class="card" style="width: 100%">
-           <div class="card-header">
-             <h4>Workflow Output Payload</h4>
-             <button class="btn btn-sm" onclick="copyWfData()">📋 Copy JSON</button>
-           </div>
-           <pre id="wf-output-text" class="text-output" style="max-height: 250px; background: rgba(0,0,0,0.5);"></pre>
-         </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" class="form-input" id="fill-phone" placeholder="-- Extracted Phone --" />
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="fill-email" placeholder="-- Extracted Email --" />
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label class="form-label">Full Address</label>
+          <textarea class="form-input" id="fill-address" rows="3" placeholder="-- Extracted Address --"></textarea>
+        </div>
       </div>
     </div>
   </section>

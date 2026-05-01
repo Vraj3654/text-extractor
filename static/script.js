@@ -82,12 +82,29 @@ async function handleRegister() {
             const d = await res.json();
             throw new Error(d.detail);
         }
-        alert("Registered! Logging in...");
-        handleLogin();
+        document.getElementById('auth-success').textContent = "Registered! Please login.";
+        document.getElementById('auth-success').style.display = 'block';
+        toggleAuthMode();
     } catch(e) {
         err.textContent = e.message;
         err.style.display = 'block';
     }
+}
+
+let isRegisterMode = false;
+function toggleAuthMode() {
+    isRegisterMode = !isRegisterMode;
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('login-btn').style.display = isRegisterMode ? 'none' : 'block';
+    document.getElementById('register-btn').style.display = isRegisterMode ? 'block' : 'none';
+    document.getElementById('auth-desc').textContent = isRegisterMode ? 'Create a new account.' : 'Sign in to access tools.';
+    document.getElementById('auth-toggle-text').textContent = isRegisterMode ? 'Already have an account?' : 'Don\'t have an account?';
+    document.getElementById('auth-toggle-link').textContent = isRegisterMode ? 'Login here' : 'Register here';
+}
+
+function togglePassword() {
+    const pw = document.getElementById('auth-password');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
 }
 
 function logout() {
@@ -228,7 +245,6 @@ async function runAnalysis(docId) {
     const data = await res.json();
     classifyLoading.style.display = 'none';
     renderClassification(data.classification);
-    renderKeyInfo(data.key_info);
     renderAutoFillForm(data.key_info);
   } catch (e) {
     classifyLoading.textContent = 'Analysis unavailable';
@@ -254,32 +270,6 @@ function renderClassification(c) {
   `;
 }
 
-function renderKeyInfo(info) {
-  const el = document.getElementById('key-info-result');
-  if (!info || Object.keys(info).length === 0) {
-    el.innerHTML = '<span class="no-info">No key data detected in this document.</span>';
-    return;
-  }
-
-  const LABELS = {
-    dates: '📅 Dates',
-    emails: '📧 Emails',
-    phone_numbers: '📞 Phone Numbers',
-    amounts: '💰 Amounts',
-    urls: '🔗 URLs',
-    pan_numbers: '🪪 PAN Numbers',
-    aadhaar_numbers: '🪪 Aadhaar',
-    percentages: '📊 Percentages',
-    names: '👤 Names',
-  };
-
-  el.innerHTML = Object.entries(info).map(([key, vals]) => `
-    <div class="info-chip">
-      <div class="chip-label">${LABELS[key] || key}</div>
-      <div class="chip-value">${(Array.isArray(vals) ? vals : [vals]).join(', ')}</div>
-    </div>
-  `).join('');
-}
 
 // =====================
 // TRANSLATION
@@ -338,8 +328,23 @@ function buildExportButtons(docId, filename) {
   `).join('');
 }
 
-function downloadExport(docId, format) {
-  window.open(`/api/export/${docId}/${format}`, '_blank');
+async function downloadExport(docId, format) {
+  const res = await authFetch(`/api/export/${docId}/${format}`);
+  if (!res.ok) { alert('Export failed'); return; }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const disp = res.headers.get('Content-Disposition');
+  let filename = `export_${docId}.${format}`;
+  if (disp && disp.indexOf('filename=') !== -1) {
+    filename = disp.split('filename=')[1].replace(/["']/g, "");
+  }
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 // =====================
@@ -556,56 +561,5 @@ function copyFormData() {
   navigator.clipboard.writeText(jsonStr).then(() => showToast('Form JSON Copied!'));
 }
 
-// =====================
-// WORKFLOW BUILDER
-// =====================
-async function executeWorkflow() {
-    const file = document.getElementById('wf-file-input').files[0];
-    if (!file) { alert('Please select a trigger file.'); return; }
 
-    const loading = document.getElementById('wf-loading');
-    const resultBox = document.getElementById('wf-result');
-    const outputText = document.getElementById('wf-output-text');
-    
-    loading.style.display = 'block';
-    resultBox.style.display = 'none';
-    
-    const steps = [];
-    const a1 = document.getElementById('wf-action-1').value;
-    const a2 = document.getElementById('wf-action-2').value;
-    
-    if (a1 && a1 !== 'none') steps.push(a1);
-    if (a2 && a2 !== 'none') steps.push(a2);
-
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('steps_json', JSON.stringify(steps));
-
-    try {
-        const res = await authFetch('/api/workflow/execute', {
-            method: 'POST',
-            body: fd
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail);
-        }
-        const data = await res.json();
-        
-        loading.style.display = 'none';
-        resultBox.style.display = 'flex';
-        outputText.textContent = JSON.stringify(data, null, 2);
-        
-        fetchUsage(); // update token limits
-
-    } catch (e) {
-        loading.style.display = 'none';
-        alert("Workflow Error: " + e.message);
-    }
-}
-
-function copyWfData() {
-    const t = document.getElementById('wf-output-text').textContent;
-    navigator.clipboard.writeText(t).then(()=>showToast('Pipeline Result Copied'));
-}
 

@@ -139,6 +139,7 @@ select, input[type="text"] {
   transition: border 0.2s;
   min-width: 180px;
 }
+select option { background: #1a1a24; color: #ffffff; }
 select:hover, select:focus { border-color: var(--primary); }
 
 /* Dropzone */

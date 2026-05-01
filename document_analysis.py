@@ -71,7 +71,8 @@ def classify_document(text: str) -> Dict[str, Any]:
     for doc_type, config in DOCUMENT_TYPES.items():
         matched = sum(1 for kw in config["keywords"] if kw in text_lower)
         if matched > 0:
-            scores[doc_type] = round((matched / len(config["keywords"])) * 100, 1)
+            confidence = min((matched / 3) * 100, 100.0)
+            scores[doc_type] = round(confidence, 1)
 
     if not scores:
         return {"type": "General Document", "icon": "📃", "confidence": 0, "scores": {}}
