@@ -9,9 +9,6 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
-    usage_count = Column(Integer, default=0)
-    max_limit = Column(Integer, default=100)
-
     documents = relationship("Document", back_populates="owner")
 
 class Document(Base):

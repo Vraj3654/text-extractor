@@ -116,15 +116,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer", "usage_count": user.usage_count, "max_limit": user.max_limit}
+    return {"access_token": access_token, "token_type": "bearer"}
     
 @app.get("/api/me")
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return {
-        "username": current_user.username,
-        "usage_count": current_user.usage_count,
-        "max_limit": current_user.max_limit
+        "username": current_user.username
     }
 
 # ===========================
@@ -145,8 +142,6 @@ async def upload_image(
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(get_current_user)
 ):
-    if current_user.usage_count >= current_user.max_limit:
-        raise HTTPException(status_code=403, detail="Usage limit exceeded. Please upgrade.")
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="No selected file")
@@ -206,7 +201,6 @@ async def upload_image(
         confidence=result.get("confidence", 0.0),
         user_id=current_user.id
     )
-    current_user.usage_count += 1
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
@@ -309,8 +303,6 @@ async def translate_text(
 
 @app.post("/api/camera-ocr")
 async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.usage_count >= current_user.max_limit:
-        raise HTTPException(status_code=403, detail="Usage limit exceeded. Please upgrade.")
 
     try:
         data_url = payload.get("image", "")
@@ -326,7 +318,6 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
 
         # For camera OCR, we might not save it to DB automatically, but we should track usage
         # Increment usage directly and commit (would need db session)
-        current_user.usage_count += 1
         db.commit()
         
         return {

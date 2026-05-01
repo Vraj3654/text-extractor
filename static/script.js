@@ -58,8 +58,7 @@ async function handleLogin() {
         document.getElementById('auth-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('logout-btn').style.display = 'inline-block';
-        updateUsage(data.usage_count, data.max_limit);
-        
+
     } catch (e) {
         err.textContent = e.message;
         err.style.display = 'block';
@@ -115,30 +114,7 @@ function logout() {
     document.getElementById('auth-overlay').style.display = 'flex';
 }
 
-async function fetchUsage() {
-    try {
-        const res = await authFetch('/api/me');
-        if (res.ok) {
-            const data = await res.json();
-            updateUsage(data.usage_count, data.max_limit);
-        }
-    } catch(e){}
-}
 
-function updateUsage(used, max) {
-    const badge = document.getElementById('usage-badge');
-    badge.style.display = 'inline-block';
-    badge.textContent = `Credits: ${used}/${max}`;
-    if (used >= max) {
-       badge.style.background = 'rgba(255,100,100,0.2)';
-       badge.style.borderColor = '#ff6464';
-       badge.style.color = '#ff6464';
-    } else {
-       badge.style.background = 'rgba(124,110,245,0.2)';
-       badge.style.borderColor = 'var(--primary)';
-       badge.style.color = 'var(--text-muted)';
-    }
-}
 
 // =====================
 // TABS
