@@ -543,18 +543,18 @@ function renderAutoFillForm(info) {
 
   const fFill = info.form_fill || {};
 
-  document.getElementById('fill-name').value = fFill.name || '';
-  document.getElementById('fill-dob').value = fFill.dob || '';
-  document.getElementById('fill-gender').value = fFill.gender || '';
-  document.getElementById('fill-address').value = fFill.address || '';
+  document.getElementById('fill-name').value = fFill.name || 'Not Available';
+  document.getElementById('fill-dob').value = fFill.dob || 'Not Available';
+  document.getElementById('fill-gender').value = fFill.gender || 'Not Available';
+  document.getElementById('fill-address').value = fFill.address || 'Not Available';
 
   const emails = info.emails || [];
-  document.getElementById('fill-email').value = emails.length > 0 ? emails[0] : '';
+  document.getElementById('fill-email').value = emails.length > 0 ? emails[0] : 'Not Available';
 
   const phones = info.phone_numbers || [];
-  document.getElementById('fill-phone').value = phones.length > 0 ? phones[0] : '';
+  document.getElementById('fill-phone').value = phones.length > 0 ? phones[0] : 'Not Available';
 
-  // Return true if at least one field was filled
+  // Return true if at least one field was actually filled from data
   return !!(fFill.name || fFill.dob || fFill.gender || fFill.address || emails.length || phones.length);
 }
 
