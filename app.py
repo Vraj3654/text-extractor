@@ -314,17 +314,24 @@ async def camera_ocr(payload: dict = Body(...), db: Session = Depends(get_db), c
             data_url = data_url.split(",", 1)[1]
 
         img_bytes = base64.b64decode(data_url)
-        processed = preprocess.preprocess_image(img_bytes)
-        result = extract_text.extract_text_from_image(processed, languages="eng")
-
-        # For camera OCR, we might not save it to DB automatically, but we should track usage
-        # Increment usage directly and commit (would need db session)
-        db.commit()
+        
+        # Use camera-specific preprocessing (gentler — no aggressive thresholding)
+        processed = preprocess.preprocess_camera_image(img_bytes)
+        
+        # PSM 3 = fully automatic page segmentation (best for camera photos with mixed content)
+        import pytesseract
+        custom_config = r'--oem 3 --psm 3'
+        raw_text = pytesseract.image_to_string(processed, config=custom_config).strip()
+        
+        # Get confidence score
+        data = pytesseract.image_to_data(processed, config=custom_config, output_type=pytesseract.Output.DICT)
+        confidences = [int(c) for c in data['conf'] if str(c).lstrip('-').isdigit() and int(c) > 0]
+        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
         
         return {
-            "text": result.get("corrected_text", "").strip(),
-            "raw_text": result.get("raw_text", "").strip(),
-            "confidence": result.get("confidence", 0),
+            "text": raw_text,
+            "raw_text": raw_text,
+            "confidence": round(avg_confidence, 1),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
