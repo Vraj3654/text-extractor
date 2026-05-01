@@ -87,7 +87,10 @@ def classify_document(text: str) -> Dict[str, Any]:
 
 
 # ===========================
-# KEY INFO EXTRACTIdef extract_key_info(text: str) -> Dict[str, Any]:
+# KEY INFO EXTRACTION
+# ===========================
+
+def extract_key_info(text: str) -> Dict[str, Any]:
     """Extract structured key information from OCR text using regex."""
     info = {}
 
