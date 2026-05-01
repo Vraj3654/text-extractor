@@ -163,7 +163,7 @@ async def upload_image(
             for page in pages:
                 open_cv_image = np.array(page) 
                 open_cv_image = open_cv_image[:, :, ::-1].copy() # RGB to BGR
-                processed_img_array = preprocess.preprocess_image(cv2.imencode('.jpg', open_cv_image)[1].tobytes())
+                processed_img_array = image_pipeline.process_scanned_document(cv2.imencode('.jpg', open_cv_image)[1].tobytes())
                 res = extract_text.extract_text_from_image(processed_img_array, languages=language)
                 
                 total_raw += res["raw_text"] + "\n\n"
@@ -250,8 +250,26 @@ async def upload_id_document(
         }
         tess_lang = LANG_MAP.get(language, language)
 
-        # ID documents always use the gentler ID pipeline (preserves details of photos/cards)
-        processed_img_array = image_pipeline.process_id_document(file_bytes)
+        # Check if the file is a PDF
+        if file.filename.lower().endswith(".pdf"):
+            from pdf2image import convert_from_bytes
+            import numpy as np
+            import cv2
+            
+            pages = convert_from_bytes(file_bytes)
+            if not pages:
+                raise ValueError("PDF contains no pages")
+            
+            # For IDs, usually it's just one page (like e-Aadhaar)
+            open_cv_image = np.array(pages[0]) 
+            open_cv_image = open_cv_image[:, :, ::-1].copy() # RGB to BGR
+            # Convert back to bytes for the pipeline
+            img_bytes_for_pipeline = cv2.imencode('.jpg', open_cv_image)[1].tobytes()
+            processed_img_array = image_pipeline.process_id_document(img_bytes_for_pipeline)
+        else:
+            # ID documents always use the gentler ID pipeline (preserves details of photos/cards)
+            processed_img_array = image_pipeline.process_id_document(file_bytes)
+            
         result = extract_text.extract_text_from_image(processed_img_array, languages=tess_lang)
         
         # Immediately run analysis for ID documents
